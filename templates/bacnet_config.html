@@ -1,0 +1,674 @@
+{% extends "base.html" %}
+
+{% block title %}BACnet Configuration - BACnet GPIO Controller{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- BACnet Device Configuration -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-network-wired me-2"></i>
+                    BACnet Device Configuration
+                </h5>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="discover-devices">
+                        <i class="fas fa-search"></i> Discover Devices
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm" id="save-bacnet-config">
+                        <i class="fas fa-save"></i> Save & Restart
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="bacnet-config-form">
+                    <!-- Device Identity -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">Device Identity</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="device-id" class="form-label">Device ID</label>
+                            <input type="number" class="form-control" id="device-id" 
+                                   value="{{ config.device_id }}" min="0" max="4194303" required>
+                            <div class="form-text">Must be unique on the BACnet network (0-4194303)</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="device-name" class="form-label">Device Name</label>
+                            <input type="text" class="form-control" id="device-name" 
+                                   value="{{ config.device_name }}" maxlength="64" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="vendor-id" class="form-label">Vendor ID</label>
+                            <input type="number" class="form-control" id="vendor-id" 
+                                   value="{{ config.vendor_id }}" min="0" max="65535" required>
+                            <div class="form-text">999 = Proprietary/Test</div>
+                        </div>
+                    </div>
+
+                    <!-- Network Configuration -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">Network Configuration</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="ip-address" class="form-label">IP Address</label>
+                            <input type="text" class="form-control" id="ip-address" 
+                                   value="{{ config.ip_address or '' }}" 
+                                   placeholder="Auto-detect">
+                            <div class="form-text">Leave empty for auto-detection</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="subnet-mask" class="form-label">Subnet Mask</label>
+                            <select class="form-select" id="subnet-mask">
+                                <option value="255.255.255.0" {{ 'selected' if config.subnet_mask == '255.255.255.0' else True }}>/24 (255.255.255.0)</option>
+                                <option value="255.255.0.0" {{ 'selected' if config.subnet_mask == '255.255.0.0' }}>/16 (255.255.0.0)</option>
+                                <option value="255.0.0.0" {{ 'selected' if config.subnet_mask == '255.0.0.0' }}>/8 (255.0.0.0)</option>
+                                <option value="255.255.255.128" {{ 'selected' if config.subnet_mask == '255.255.255.128' }}>/25 (255.255.255.128)</option>
+                                <option value="255.255.255.192" {{ 'selected' if config.subnet_mask == '255.255.255.192' }}>/26 (255.255.255.192)</option>
+                                <option value="255.255.254.0" {{ 'selected' if config.subnet_mask == '255.255.254.0' }}>/23 (255.255.254.0)</option>
+                                <option value="custom">Custom...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4" id="custom-subnet" style="display: none;">
+                            <label for="custom-subnet-mask" class="form-label">Custom Subnet Mask</label>
+                            <input type="text" class="form-control" id="custom-subnet-mask" 
+                                   placeholder="255.255.255.0">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="bacnet-port" class="form-label">BACnet Port</label>
+                            <input type="number" class="form-control" id="bacnet-port" 
+                                   value="{{ config.bacnet_port }}" min="1024" max="65535" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="network-number" class="form-label">Network Number</label>
+                            <input type="number" class="form-control" id="network-number" 
+                                   value="{{ config.network_number }}" min="0" max="65535">
+                            <div class="form-text">0 = Local network</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="broadcast-address" class="form-label">Broadcast Address</label>
+                            <input type="text" class="form-control" id="broadcast-address" 
+                                   placeholder="Auto-calculated" readonly>
+                            <div class="form-text">Calculated from IP and subnet mask</div>
+                        </div>
+                    </div>
+
+                    <!-- BBMD Configuration -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                BBMD (BACnet Broadcast Management Device)
+                                <small class="text-muted">- For routing across subnets</small>
+                            </h6>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enable-bbmd" 
+                                       {{ 'checked' if config.bbmd_enabled }}>
+                                <label class="form-check-label" for="enable-bbmd">
+                                    Enable BBMD Registration
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6" id="bbmd-settings">
+                            <label for="bbmd-address" class="form-label">BBMD IP Address</label>
+                            <input type="text" class="form-control" id="bbmd-address" 
+                                   value="{{ config.bbmd_address or '' }}" 
+                                   placeholder="192.168.1.1">
+                        </div>
+                        <div class="col-md-3" id="bbmd-port-settings">
+                            <label for="bbmd-port" class="form-label">BBMD Port</label>
+                            <input type="number" class="form-control" id="bbmd-port" 
+                                   value="{{ config.bbmd_port or 47808 }}" min="1024" max="65535">
+                        </div>
+                        <div class="col-md-3" id="bbmd-ttl-settings">
+                            <label for="bbmd-ttl" class="form-label">TTL (seconds)</label>
+                            <input type="number" class="form-control" id="bbmd-ttl" 
+                                   value="{{ config.bbmd_ttl or 900 }}" min="60" max="3600">
+                        </div>
+                    </div>
+
+                    <!-- Foreign Device Registration -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                Foreign Device Registration
+                                <small class="text-muted">- Register with BBMD when behind NAT/firewall</small>
+                            </h6>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enable-foreign-device" 
+                                       {{ 'checked' if config.foreign_device_enabled }}>
+                                <label class="form-check-label" for="enable-foreign-device">
+                                    Register as Foreign Device
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6" id="foreign-device-settings">
+                            <label for="foreign-device-bbmd" class="form-label">BBMD Address</label>
+                            <input type="text" class="form-control" id="foreign-device-bbmd" 
+                                   value="{{ config.foreign_device_bbmd or '' }}" 
+                                   placeholder="Public BBMD IP">
+                        </div>
+                        <div class="col-md-3" id="foreign-device-port-settings">
+                            <label for="foreign-device-port" class="form-label">BBMD Port</label>
+                            <input type="number" class="form-control" id="foreign-device-port" 
+                                   value="{{ config.foreign_device_port or 47808 }}" min="1024" max="65535">
+                        </div>
+                        <div class="col-md-3" id="foreign-device-ttl-settings">
+                            <label for="foreign-device-ttl" class="form-label">TTL (seconds)</label>
+                            <input type="number" class="form-control" id="foreign-device-ttl" 
+                                   value="{{ config.foreign_device_ttl or 600 }}" min="60" max="3600">
+                        </div>
+                    </div>
+
+                    <!-- Advanced Options -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">Advanced Options</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="max-apdu-length" class="form-label">Max APDU Length</label>
+                            <select class="form-select" id="max-apdu-length">
+                                <option value="50" {{ 'selected' if config.max_apdu_length == 50 }}>50 bytes</option>
+                                <option value="128" {{ 'selected' if config.max_apdu_length == 128 }}>128 bytes</option>
+                                <option value="206" {{ 'selected' if config.max_apdu_length == 206 }}>206 bytes</option>
+                                <option value="480" {{ 'selected' if config.max_apdu_length == 480 }}>480 bytes</option>
+                                <option value="1024" {{ 'selected' if config.max_apdu_length == 1024 }}>1024 bytes</option>
+                                <option value="1476" {{ 'selected' if config.max_apdu_length == 1476 else True }}>1476 bytes (default)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="segmentation" class="form-label">Segmentation Support</label>
+                            <select class="form-select" id="segmentation">
+                                <option value="segmentedBoth" {{ 'selected' if config.segmentation == 'segmentedBoth' else True }}>Both</option>
+                                <option value="segmentedTransmit" {{ 'selected' if config.segmentation == 'segmentedTransmit' }}>Transmit Only</option>
+                                <option value="segmentedReceive" {{ 'selected' if config.segmentation == 'segmentedReceive' }}>Receive Only</option>
+                                <option value="noSegmentation" {{ 'selected' if config.segmentation == 'noSegmentation' }}>None</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="cov-subscription-lifetime" class="form-label">COV Lifetime (sec)</label>
+                            <input type="number" class="form-control" id="cov-subscription-lifetime" 
+                                   value="{{ config.cov_subscription_lifetime or 3600 }}" min="60" max="86400">
+                        </div>
+                    </div>
+
+                    <!-- Debug Options -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">Debug & Logging</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enable-debug" 
+                                       {{ 'checked' if config.debug_enabled }}>
+                                <label class="form-check-label" for="enable-debug">
+                                    Enable Debug Logging
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enable-packet-capture" 
+                                       {{ 'checked' if config.packet_capture_enabled }}>
+                                <label class="form-check-label" for="enable-packet-capture">
+                                    Enable Packet Capture
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="log-level" class="form-label">Log Level</label>
+                            <select class="form-select" id="log-level">
+                                <option value="debug" {{ 'selected' if config.log_level == 'debug' }}>Debug</option>
+                                <option value="info" {{ 'selected' if config.log_level == 'info' else True }}>Info</option>
+                                <option value="warning" {{ 'selected' if config.log_level == 'warning' }}>Warning</option>
+                                <option value="error" {{ 'selected' if config.log_level == 'error' }}>Error</option>
+                                <option value="silence" {{ 'selected' if config.log_level == 'silence' }}>Silent</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status and Discovery Panel -->
+    <div class="col-lg-4">
+        <!-- Current BACnet Status -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Current BACnet Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <small class="text-muted">Status:</small><br>
+                        <span class="badge" id="current-status">{{ status.state or 'Unknown' }}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Device ID:</small><br>
+                        <strong id="current-device-id">{{ status.device_id or '--' }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">IP Address:</small><br>
+                        <code id="current-ip">{{ status.ip_address or '--' }}</code>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Port:</small><br>
+                        <strong id="current-port">{{ status.port or '--' }}</strong>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted">Objects:</small><br>
+                        <strong id="current-objects">{{ status.objects_count or 0 }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Discovery -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-radar me-2"></i>
+                    Device Discovery
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2 mb-3">
+                    <button type="button" class="btn btn-outline-primary" id="who-is-scan">
+                        <i class="fas fa-search"></i> Who-Is Scan
+                    </button>
+                    <button type="button" class="btn btn-outline-info" id="iam-broadcast">
+                        <i class="fas fa-broadcast-tower"></i> Send I-Am
+                    </button>
+                </div>
+                
+                <div id="discovered-devices">
+                    <p class="text-muted mb-0">No devices discovered yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Tools -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-tools me-2"></i>
+                    Network Tools
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="ping-device-id" class="form-label">Ping Device ID</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" class="form-control" id="ping-device-id" 
+                               placeholder="Device ID" min="0" max="4194303">
+                        <button class="btn btn-outline-secondary" type="button" id="ping-device">
+                            <i class="fas fa-satellite-dish"></i> Ping
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="read-property-device" class="form-label">Read Property</label>
+                    <div class="row g-1">
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="read-property-device" placeholder="Device ID">
+                        </div>
+                        <div class="col-6">
+                            <input type="text" class="form-control form-control-sm" 
+                                   id="read-property-name" placeholder="Property">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-outline-secondary btn-sm w-100" type="button" id="read-property">
+                                <i class="fas fa-download"></i> Read Property
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="network-tools-results">
+                    <small class="text-muted">Results will appear here</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Results Modal -->
+<div class="modal fade" id="testResultsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Network Test Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="test-results-content"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// BACnet Configuration Page JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle BBMD settings visibility
+    const bbmdCheckbox = document.getElementById('enable-bbmd');
+    const bbmdSettings = document.querySelectorAll('#bbmd-settings, #bbmd-port-settings, #bbmd-ttl-settings');
+    
+    function toggleBBMDSettings() {
+        const enabled = bbmdCheckbox.checked;
+        bbmdSettings.forEach(element => {
+            element.style.display = enabled ? 'block' : 'none';
+        });
+    }
+    
+    bbmdCheckbox.addEventListener('change', toggleBBMDSettings);
+    toggleBBMDSettings(); // Initial state
+
+    // Toggle Foreign Device settings visibility
+    const foreignDeviceCheckbox = document.getElementById('enable-foreign-device');
+    const foreignDeviceSettings = document.querySelectorAll('#foreign-device-settings, #foreign-device-port-settings, #foreign-device-ttl-settings');
+    
+    function toggleForeignDeviceSettings() {
+        const enabled = foreignDeviceCheckbox.checked;
+        foreignDeviceSettings.forEach(element => {
+            element.style.display = enabled ? 'block' : 'none';
+        });
+    }
+    
+    foreignDeviceCheckbox.addEventListener('change', toggleForeignDeviceSettings);
+    toggleForeignDeviceSettings(); // Initial state
+
+    // Subnet mask handling
+    const subnetSelect = document.getElementById('subnet-mask');
+    const customSubnetDiv = document.getElementById('custom-subnet');
+    
+    function toggleCustomSubnet() {
+        const isCustom = subnetSelect.value === 'custom';
+        customSubnetDiv.style.display = isCustom ? 'block' : 'none';
+        calculateBroadcastAddress();
+    }
+    
+    subnetSelect.addEventListener('change', toggleCustomSubnet);
+    toggleCustomSubnet(); // Initial state
+    
+    // Calculate broadcast address when IP or subnet changes
+    document.getElementById('ip-address').addEventListener('input', calculateBroadcastAddress);
+    document.getElementById('custom-subnet-mask').addEventListener('input', calculateBroadcastAddress);
+    
+    function calculateBroadcastAddress() {
+        const ipInput = document.getElementById('ip-address');
+        const subnetSelect = document.getElementById('subnet-mask');
+        const customSubnetInput = document.getElementById('custom-subnet-mask');
+        const broadcastInput = document.getElementById('broadcast-address');
+        
+        let ip = ipInput.value.trim();
+        let subnet = subnetSelect.value === 'custom' ? customSubnetInput.value.trim() : subnetSelect.value;
+        
+        if (!ip || !subnet || ip === 'Auto-detect') {
+            broadcastInput.value = 'Auto-calculated';
+            return;
+        }
+        
+        try {
+            const broadcast = calculateBroadcast(ip, subnet);
+            broadcastInput.value = broadcast;
+        } catch (e) {
+            broadcastInput.value = 'Invalid IP/Subnet';
+        }
+    }
+    
+    function calculateBroadcast(ip, subnet) {
+        const ipParts = ip.split('.').map(n => parseInt(n));
+        const subnetParts = subnet.split('.').map(n => parseInt(n));
+        
+        if (ipParts.length !== 4 || subnetParts.length !== 4) {
+            throw new Error('Invalid format');
+        }
+        
+        const broadcastParts = [];
+        for (let i = 0; i < 4; i++) {
+            broadcastParts.push(ipParts[i] | (255 - subnetParts[i]));
+        }
+        
+        return broadcastParts.join('.');
+    }
+    
+    // Initial calculation
+    calculateBroadcastAddress();
+
+    // Save configuration
+    document.getElementById('save-bacnet-config').addEventListener('click', saveBACnetConfig);
+    
+    // Discovery and network tools
+    document.getElementById('who-is-scan').addEventListener('click', performWhoIsScan);
+    document.getElementById('iam-broadcast').addEventListener('click', sendIAmBroadcast);
+    document.getElementById('ping-device').addEventListener('click', pingDevice);
+    document.getElementById('read-property').addEventListener('click', readProperty);
+});
+
+async function saveBACnetConfig() {
+    const button = document.getElementById('save-bacnet-config');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    try {
+        const config = collectBACnetConfig();
+        
+        const response = await fetch('/api/bacnet/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('BACnet configuration saved and device restarted!', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showAlert('Error saving configuration: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Network error: ' + error.message, 'danger');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-save"></i> Save & Restart';
+    }
+}
+
+function collectBACnetConfig() {
+    const subnetSelect = document.getElementById('subnet-mask');
+    const customSubnetInput = document.getElementById('custom-subnet-mask');
+    
+    return {
+        device_id: parseInt(document.getElementById('device-id').value),
+        device_name: document.getElementById('device-name').value,
+        vendor_id: parseInt(document.getElementById('vendor-id').value),
+        ip_address: document.getElementById('ip-address').value || null,
+        subnet_mask: subnetSelect.value === 'custom' ? customSubnetInput.value : subnetSelect.value,
+        bacnet_port: parseInt(document.getElementById('bacnet-port').value),
+        network_number: parseInt(document.getElementById('network-number').value),
+        bbmd_enabled: document.getElementById('enable-bbmd').checked,
+        bbmd_address: document.getElementById('bbmd-address').value || null,
+        bbmd_port: parseInt(document.getElementById('bbmd-port').value) || 47808,
+        bbmd_ttl: parseInt(document.getElementById('bbmd-ttl').value) || 900,
+        foreign_device_enabled: document.getElementById('enable-foreign-device').checked,
+        foreign_device_bbmd: document.getElementById('foreign-device-bbmd').value || null,
+        foreign_device_port: parseInt(document.getElementById('foreign-device-port').value) || 47808,
+        foreign_device_ttl: parseInt(document.getElementById('foreign-device-ttl').value) || 600,
+        max_apdu_length: parseInt(document.getElementById('max-apdu-length').value),
+        segmentation: document.getElementById('segmentation').value,
+        cov_subscription_lifetime: parseInt(document.getElementById('cov-subscription-lifetime').value),
+        debug_enabled: document.getElementById('enable-debug').checked,
+        packet_capture_enabled: document.getElementById('enable-packet-capture').checked,
+        log_level: document.getElementById('log-level').value
+    };
+}
+
+async function performWhoIsScan() {
+    const button = document.getElementById('who-is-scan');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    
+    try {
+        const response = await fetch('/api/bacnet/whois', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            displayDiscoveredDevices(data.devices);
+        } else {
+            showAlert('Discovery failed: ' + data.error, 'warning');
+        }
+    } catch (error) {
+        showAlert('Network error: ' + error.message, 'danger');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-search"></i> Who-Is Scan';
+    }
+}
+
+async function sendIAmBroadcast() {
+    const button = document.getElementById('iam-broadcast');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Broadcasting...';
+    
+    try {
+        const response = await fetch('/api/bacnet/iam', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('I-Am broadcast sent successfully!', 'success');
+        } else {
+            showAlert('Broadcast failed: ' + data.error, 'warning');
+        }
+    } catch (error) {
+        showAlert('Network error: ' + error.message, 'danger');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-broadcast-tower"></i> Send I-Am';
+    }
+}
+
+async function pingDevice() {
+    const deviceId = document.getElementById('ping-device-id').value;
+    if (!deviceId) {
+        showAlert('Please enter a device ID to ping', 'warning');
+        return;
+    }
+    
+    const button = document.getElementById('ping-device');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Pinging...';
+    
+    try {
+        // For now, show simulation message
+        showAlert(`Pinging device ${deviceId}... (simulation mode)`, 'info');
+        
+        // In real implementation, this would ping the actual device
+        setTimeout(() => {
+            document.getElementById('network-tools-results').innerHTML = 
+                `<small class="text-success">Device ${deviceId}: Response simulated</small>`;
+        }, 1000);
+        
+    } catch (error) {
+        showAlert('Ping failed: ' + error.message, 'danger');
+    } finally {
+        setTimeout(() => {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-satellite-dish"></i> Ping';
+        }, 1000);
+    }
+}
+
+async function readProperty() {
+    const deviceId = document.getElementById('read-property-device').value;
+    const property = document.getElementById('read-property-name').value;
+    
+    if (!deviceId || !property) {
+        showAlert('Please enter both device ID and property name', 'warning');
+        return;
+    }
+    
+    const button = document.getElementById('read-property');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reading...';
+    
+    try {
+        showAlert(`Reading ${property} from device ${deviceId}... (simulation mode)`, 'info');
+        
+        setTimeout(() => {
+            document.getElementById('network-tools-results').innerHTML = 
+                `<small class="text-info">Property ${property} from device ${deviceId}: Simulated value</small>`;
+        }, 1000);
+        
+    } catch (error) {
+        showAlert('Read failed: ' + error.message, 'danger');
+    } finally {
+        setTimeout(() => {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-download"></i> Read Property';
+        }, 1000);
+    }
+}
+
+function displayDiscoveredDevices(devices) {
+    const container = document.getElementById('discovered-devices');
+    
+    if (!devices || devices.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No devices discovered</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    devices.forEach(device => {
+        html += `
+            <div class="list-group-item p-2">
+                <div class="d-flex justify-content-between">
+                    <small><strong>ID ${device.device_id}</strong></small>
+                    <small class="text-muted">${device.address}</small>
+                </div>
+                <div class="small text-muted">${device.name || 'Unknown Device'}</div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function showAlert(message, type = 'info') {
+    // Create and show bootstrap alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}
