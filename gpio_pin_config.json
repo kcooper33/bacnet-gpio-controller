@@ -1,0 +1,196 @@
+{
+  "gpio_pins": {
+    "0": {
+      "name": "Test0",
+      "direction": "input",
+      "high_unit": "On",
+      "low_unit": "Off",
+      "enabled": false,
+      "instance": 24
+    },
+    "1": {
+      "name": "GPIO 1",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 1
+    },
+    "2": {
+      "name": "GPIO 2",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 2
+    },
+    "3": {
+      "name": "GPIO 3",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 3
+    },
+    "4": {
+      "name": "GPIO 4",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 4
+    },
+    "5": {
+      "name": "GPIO 5",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 5
+    },
+    "6": {
+      "name": "GPIO 6",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 6
+    },
+    "7": {
+      "name": "GPIO 7",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 7
+    },
+    "8": {
+      "name": "GPIO 8",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 8
+    },
+    "9": {
+      "name": "GPIO 9",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 9
+    },
+    "10": {
+      "name": "GPIO 10",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 10
+    },
+    "11": {
+      "name": "GPIO 11",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 11
+    },
+    "12": {
+      "name": "GPIO 12",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 12
+    },
+    "13": {
+      "name": "GPIO 13",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 13
+    },
+    "14": {
+      "name": "GPIO 14",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 14
+    },
+    "15": {
+      "name": "GPIO 15",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 15
+    },
+    "16": {
+      "name": "GPIO 16",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 16
+    },
+    "17": {
+      "name": "GPIO 17",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 17
+    },
+    "18": {
+      "name": "Test LED",
+      "direction": "output",
+      "high_unit": "ON",
+      "low_unit": "OFF",
+      "enabled": true,
+      "instance": 18
+    },
+    "19": {
+      "name": "Motion Sensor",
+      "direction": "input",
+      "high_unit": "Motion",
+      "low_unit": "No Motion",
+      "enabled": true,
+      "instance": 19
+    },
+    "20": {
+      "name": "GPIO 20",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 20
+    },
+    "21": {
+      "name": "GPIO 21",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 21
+    },
+    "22": {
+      "name": "GPIO 22",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 22
+    },
+    "23": {
+      "name": "GPIO 23",
+      "direction": "input",
+      "high_unit": "High",
+      "low_unit": "Low",
+      "enabled": false,
+      "instance": 23
+    }
+  }
+}
