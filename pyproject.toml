@@ -1,0 +1,13 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "bac0>=2025.2.post18",
+    "bacpypes3>=0.0.102",
+    "flask>=3.1.1",
+    "psutil>=7.0.0",
+    "rpi-gpio>=0.7.1",
+    "spidev>=3.7",
+]
