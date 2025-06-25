@@ -1,0 +1,49 @@
+{
+    "18": {
+        "description": "Test output",
+        "direction": "output",
+        "enabled": true,
+        "initial_value": 0,
+        "name": "Test LED",
+        "pull_up_down": "none",
+        "pwm_frequency": 1000,
+        "type": "digital"
+    },
+    "19": {
+        "description": "Digital input sensor",
+        "direction": "input",
+        "enabled": true,
+        "initial_value": 0,
+        "name": "Motion Sensor",
+        "pull_up_down": "up",
+        "type": "digital"
+    },
+    "20": {
+        "description": "Analog input temperature",
+        "direction": "input",
+        "enabled": true,
+        "initial_value": 0,
+        "name": "Temperature Sensor",
+        "pull_up_down": "none",
+        "type": "analog"
+    },
+    "21": {
+        "description": "PWM output fan control",
+        "direction": "output",
+        "enabled": true,
+        "initial_value": 0,
+        "name": "Fan Control",
+        "pull_up_down": "none",
+        "pwm_frequency": 1000,
+        "type": "pwm"
+    },
+    "26": {
+        "description": "Relay output",
+        "direction": "output",
+        "enabled": true,
+        "initial_value": 0,
+        "name": "Main Relay",
+        "pull_up_down": "none",
+        "type": "digital"
+    }
+}
