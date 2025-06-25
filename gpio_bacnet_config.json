@@ -1,0 +1,24 @@
+{
+  "device_id": 25411,
+  "device_name": "RPi GPIO Controller",
+  "generated_at": "Configuration interface",
+  "total_objects": 2,
+  "objects": [
+    {
+      "object_type": "binary_output",
+      "instance": 4018,
+      "name": "Test LED",
+      "gpio_pin": 18,
+      "active_text": "ON",
+      "inactive_text": "OFF"
+    },
+    {
+      "object_type": "binary_input",
+      "instance": 3019,
+      "name": "Motion Sensor",
+      "gpio_pin": 19,
+      "active_text": "Motion",
+      "inactive_text": "No Motion"
+    }
+  ]
+}
