@@ -1,0 +1,65 @@
+{
+  "device": {
+    "id": 25411,
+    "name": "RPi GPIO Controller",
+    "vendor_id": 999,
+    "description": "Raspberry Pi BACnet GPIO Controller"
+  },
+  "network": {
+    "ip": "192.168.52.12",
+    "port": 47808,
+    "interface": "wlan0",
+    "broadcast": "192.168.52.255"
+  },
+  "bacnet_options": {
+    "ethernet_enable": false,
+    "apdu_timeout": 10,
+    "debug_level": 2,
+    "initial_query": true,
+    "http_server": false
+  },
+  "gpio_pins": {
+    "18": {
+      "name": "Test LED",
+      "type": "binary_output",
+      "description": "GPIO 18 - Status LED",
+      "enabled": true,
+      "initial_value": 0
+    },
+    "19": {
+      "name": "Motion Sensor", 
+      "type": "binary_input",
+      "description": "GPIO 19 - PIR Motion Detector",
+      "enabled": true,
+      "initial_value": 0
+    },
+    "20": {
+      "name": "Temperature Sensor",
+      "type": "analog_input", 
+      "description": "GPIO 20 - Temperature Reading",
+      "enabled": true,
+      "initial_value": 20.5,
+      "units": "degrees-celsius"
+    },
+    "21": {
+      "name": "Fan Control",
+      "type": "analog_output",
+      "description": "GPIO 21 - PWM Fan Speed Control", 
+      "enabled": true,
+      "initial_value": 0.0,
+      "units": "percent"
+    },
+    "26": {
+      "name": "Main Relay",
+      "type": "binary_output",
+      "description": "GPIO 26 - Control Relay",
+      "enabled": true,
+      "initial_value": 0
+    }
+  },
+  "web_interface": {
+    "enabled": true,
+    "port": 5000,
+    "host": "0.0.0.0"
+  }
+}
