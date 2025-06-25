@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}GPIO Configuration - BACnet GPIO Controller{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- GPIO Configuration Panel -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-sliders-h me-2"></i>
+                    GPIO Pin Configuration
+                </h5>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="refresh-pins">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm" id="save-config">
+                        <i class="fas fa-save"></i> Save Configuration
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Configuration Form -->
+                <form id="gpio-config-form">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 60px;">Pin</th>
+                                    <th style="width: 80px;">Enable</th>
+                                    <th style="width: 120px;">Direction</th>
+                                    <th style="width: 120px;">Type</th>
+                                    <th style="width: 150px;">Name</th>
+                                    <th>Description</th>
+                                    <th style="width: 100px;">Current Value</th>
+                                    <th style="width: 80px;">Control</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gpio-pins-table">
+                                {% for pin in available_pins %}
+                                <tr data-pin="{{ pin }}">
+                                    <td class="pin-number">
+                                        <span class="badge bg-primary">{{ pin }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="form-check-input pin-enabled" type="checkbox" 
+                                                   id="enable-{{ pin }}" 
+                                                   {% if gpio_config.get(pin|string, {}).get('enabled', False) %}checked{% endif %}>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm pin-direction" 
+                                                data-pin="{{ pin }}" id="direction-{{ pin }}">
+                                            <option value="input" 
+                                                    {% if gpio_config.get(pin|string, {}).get('direction') == 'input' %}selected{% endif %}>
+                                                Input
+                                            </option>
+                                            <option value="output" 
+                                                    {% if gpio_config.get(pin|string, {}).get('direction') == 'output' %}selected{% endif %}>
+                                                Output
+                                            </option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm pin-type" 
+                                                data-pin="{{ pin }}" id="type-{{ pin }}">
+                                            <option value="digital" 
+                                                    {% if gpio_config.get(pin|string, {}).get('type') == 'digital' %}selected{% endif %}>
+                                                Digital
+                                            </option>
+                                            <option value="analog" 
+                                                    {% if gpio_config.get(pin|string, {}).get('type') == 'analog' %}selected{% endif %}>
+                                                Analog
+                                            </option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm pin-name" 
+                                               data-pin="{{ pin }}" id="name-{{ pin }}"
+                                               value="{{ gpio_config.get(pin|string, {}).get('name', 'GPIO' + pin|string) }}"
+                                               placeholder="GPIO{{ pin }}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm pin-description" 
+                                               data-pin="{{ pin }}" id="description-{{ pin }}"
+                                               value="{{ gpio_config.get(pin|string, {}).get('description', '') }}"
+                                               placeholder="Description">
+                                    </td>
+                                    <td>
+                                        <span class="pin-value" id="value-{{ pin }}">
+                                            {% if pin_states.get(pin) %}
+                                                {% if pin_states[pin].get('error') %}
+                                                    <span class="text-danger">Error</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">{{ pin_states[pin].get('value', '--') }}</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">--</span>
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm pin-controls" role="group">
+                                            <button type="button" class="btn btn-outline-success pin-write-high" 
+                                                    data-pin="{{ pin }}" data-value="1" title="Set High">
+                                                <i class="fas fa-arrow-up"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger pin-write-low" 
+                                                    data-pin="{{ pin }}" data-value="0" title="Set Low">
+                                                <i class="fas fa-arrow-down"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Panel -->
+    <div class="col-lg-4">
+        <!-- BACnet Device Status -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-network-wired me-2"></i>
+                    BACnet Device Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <small class="text-muted">Device ID:</small><br>
+                        <strong id="device-id">{{ device_status.get('device_id', '--') }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">State:</small><br>
+                        <span class="badge" id="device-state">{{ device_status.get('state', 'Unknown') }}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">IP Address:</small><br>
+                        <code id="device-ip">{{ device_status.get('ip_address', '--') }}</code>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Objects:</small><br>
+                        <strong id="objects-count">{{ device_status.get('objects_count', 0) }}</strong>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-warning btn-sm" id="restart-bacnet">
+                        <i class="fas fa-redo"></i> Restart BACnet Device
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GPIO Summary -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    GPIO Summary
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 text-center">
+                    <div class="col-6">
+                        <div class="bg-primary bg-opacity-10 p-2 rounded">
+                            <div class="h4 mb-0" id="total-pins">{{ available_pins|length }}</div>
+                            <small class="text-muted">Total Pins</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-success bg-opacity-10 p-2 rounded">
+                            <div class="h4 mb-0" id="enabled-pins">{{ gpio_config|length }}</div>
+                            <small class="text-muted">Enabled</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-info bg-opacity-10 p-2 rounded">
+                            <div class="h4 mb-0" id="input-pins">0</div>
+                            <small class="text-muted">Inputs</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-warning bg-opacity-10 p-2 rounded">
+                            <div class="h4 mb-0" id="output-pins">0</div>
+                            <small class="text-muted">Outputs</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Activity
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="activity-log">
+                    <p class="text-muted mb-0">No recent activity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pin Write Modal -->
+<div class="modal fade" id="pinWriteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Write Pin Value</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="pin-write-form">
+                    <div class="mb-3">
+                        <label class="form-label">Pin: <span id="write-pin-number"></span></label>
+                        <label class="form-label">Type: <span id="write-pin-type"></span></label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="write-value" class="form-label">Value</label>
+                        <input type="number" class="form-control" id="write-value" 
+                               step="0.1" min="0" max="3.3" placeholder="Enter value">
+                        <div class="form-text">For digital: 0 or 1. For analog: 0.0 to 3.3V</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-write">Write Value</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Initialize page-specific functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Update pin summary counts
+    updatePinSummary();
+    
+    // Setup event listeners
+    setupPinEventListeners();
+    
+    // Start real-time updates
+    startRealTimeUpdates();
+});
+
+function updatePinSummary() {
+    let enabledCount = 0;
+    let inputCount = 0;
+    let outputCount = 0;
+    
+    document.querySelectorAll('.pin-enabled:checked').forEach(checkbox => {
+        enabledCount++;
+        const pin = checkbox.id.replace('enable-', '');
+        const direction = document.getElementById(`direction-${pin}`).value;
+        
+        if (direction === 'input') {
+            inputCount++;
+        } else {
+            outputCount++;
+        }
+    });
+    
+    document.getElementById('enabled-pins').textContent = enabledCount;
+    document.getElementById('input-pins').textContent = inputCount;
+    document.getElementById('output-pins').textContent = outputCount;
+}
+
+function setupPinEventListeners() {
+    // Pin enable/disable
+    document.querySelectorAll('.pin-enabled').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updatePinSummary();
+            const pin = this.id.replace('enable-', '');
+            const row = document.querySelector(`tr[data-pin="${pin}"]`);
+            
+            if (this.checked) {
+                row.classList.remove('table-secondary');
+            } else {
+                row.classList.add('table-secondary');
+            }
+        });
+    });
+    
+    // Direction/type changes
+    document.querySelectorAll('.pin-direction, .pin-type').forEach(select => {
+        select.addEventListener('change', function() {
+            updatePinSummary();
+            updatePinControls(this.dataset.pin);
+        });
+    });
+    
+    // Pin write controls
+    document.querySelectorAll('.pin-write-high, .pin-write-low').forEach(button => {
+        button.addEventListener('click', function() {
+            const pin = this.dataset.pin;
+            const value = this.dataset.value;
+            writePin(pin, value);
+        });
+    });
+}
+
+function updatePinControls(pin) {
+    const direction = document.getElementById(`direction-${pin}`).value;
+    const controls = document.querySelector(`tr[data-pin="${pin}"] .pin-controls`);
+    
+    if (direction === 'output') {
+        controls.style.display = 'block';
+    } else {
+        controls.style.display = 'none';
+    }
+}
+
+function startRealTimeUpdates() {
+    // Update GPIO states every 2 seconds
+    setInterval(() => {
+        updateGPIOStates();
+        updateBACnetStatus();
+    }, 2000);
+}
+
+function writePin(pin, value) {
+    fetch('/api/gpio/write', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            pin: parseInt(pin),
+            value: parseFloat(value)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addActivityLog(`Pin ${pin} set to ${value}`);
+            // Update the pin value display immediately
+            updatePinValue(pin, value);
+        } else {
+            showAlert('Error writing pin: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Network error: ' + error.message, 'danger');
+    });
+}
+
+function updatePinValue(pin, value) {
+    const valueElement = document.getElementById(`value-${pin}`);
+    if (valueElement) {
+        valueElement.innerHTML = `<span class="badge bg-success">${value}</span>`;
+    }
+}
+</script>
+{% endblock %}
