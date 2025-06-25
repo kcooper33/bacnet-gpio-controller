@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPIO Pin Configuration - BACnet Controller</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .gpio-card {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+        .gpio-enabled {
+            border-left: 4px solid #28a745;
+        }
+        .gpio-disabled {
+            border-left: 4px solid #6c757d;
+        }
+        .gpio-input {
+            background-color: #e3f2fd;
+        }
+        .gpio-output {
+            background-color: #fff3e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>GPIO Pin Configuration</h2>
+                    <div>
+                        <button type="button" class="btn btn-success" onclick="saveConfiguration()">
+                            Save & Apply Configuration
+                        </button>
+                        <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Instructions:</strong>
+                    <ul class="mb-0">
+                        <li>Configure each GPIO pin with a name, direction (input/output), and active/inactive labels</li>
+                        <li>Enable pins to create corresponding BACnet objects</li>
+                        <li>Instance numbers: GPIO 0 → Instance 24, GPIO 1-23 → Instance 1-23</li>
+                        <li>Binary Inputs created for input direction, Binary Outputs for output direction</li>
+                    </ul>
+                </div>
+
+                <form id="gpioConfigForm">
+                    <div class="row">
+                        {% for pin_num, config in gpio_config.gpio_pins.items() %}
+                        <div class="col-lg-6 col-xl-4">
+                            <div class="card gpio-card {% if config.enabled %}gpio-enabled{% else %}gpio-disabled{% endif %} {% if config.direction == 'input' %}gpio-input{% else %}gpio-output{% endif %}">
+                                <div class="card-header">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="enabled_{{ pin_num }}" name="enabled_{{ pin_num }}"
+                                               {% if config.enabled %}checked{% endif %}
+                                               onchange="togglePin({{ pin_num }})">
+                                        <label class="form-check-label fw-bold" for="enabled_{{ pin_num }}">
+                                            GPIO {{ pin_num }} (Instance {{ config.instance }})
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="name_{{ pin_num }}" class="form-label">Object Name</label>
+                                        <input type="text" class="form-control" id="name_{{ pin_num }}" 
+                                               name="name_{{ pin_num }}" value="{{ config.name }}" 
+                                               placeholder="GPIO {{ pin_num }}">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="direction_{{ pin_num }}" class="form-label">Direction</label>
+                                        <select class="form-select" id="direction_{{ pin_num }}" 
+                                                name="direction_{{ pin_num }}" onchange="updateDirection({{ pin_num }})">
+                                            <option value="input" {% if config.direction == 'input' %}selected{% endif %}>Input (Binary Input)</option>
+                                            <option value="output" {% if config.direction == 'output' %}selected{% endif %}>Output (Binary Output)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="high_unit_{{ pin_num }}" class="form-label">Active Text</label>
+                                        <input type="text" class="form-control" id="high_unit_{{ pin_num }}" 
+                                               name="high_unit_{{ pin_num }}" value="{{ config.high_unit }}"
+                                               placeholder="High/ON/Active">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="low_unit_{{ pin_num }}" class="form-label">Inactive Text</label>
+                                        <input type="text" class="form-control" id="low_unit_{{ pin_num }}" 
+                                               name="low_unit_{{ pin_num }}" value="{{ config.low_unit }}"
+                                               placeholder="Low/OFF/Inactive">
+                                    </div>
+                                    
+                                    <input type="hidden" name="instance_{{ pin_num }}" value="{{ config.instance }}">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function togglePin(pinNum) {
+            const card = document.querySelector(`#enabled_${pinNum}`).closest('.gpio-card');
+            const enabled = document.querySelector(`#enabled_${pinNum}`).checked;
+            
+            if (enabled) {
+                card.classList.remove('gpio-disabled');
+                card.classList.add('gpio-enabled');
+            } else {
+                card.classList.remove('gpio-enabled');
+                card.classList.add('gpio-disabled');
+            }
+        }
+        
+        function updateDirection(pinNum) {
+            const card = document.querySelector(`#direction_${pinNum}`).closest('.gpio-card');
+            const direction = document.querySelector(`#direction_${pinNum}`).value;
+            
+            card.classList.remove('gpio-input', 'gpio-output');
+            if (direction === 'input') {
+                card.classList.add('gpio-input');
+            } else {
+                card.classList.add('gpio-output');
+            }
+        }
+        
+        function saveConfiguration() {
+            const form = document.getElementById('gpioConfigForm');
+            const formData = new FormData(form);
+            
+            // Convert form data to JSON structure
+            const config = {
+                gpio_pins: {}
+            };
+            
+            for (let i = 0; i <= 23; i++) {
+                const pinNum = i.toString();
+                config.gpio_pins[pinNum] = {
+                    name: formData.get(`name_${pinNum}`) || `GPIO ${pinNum}`,
+                    direction: formData.get(`direction_${pinNum}`) || 'input',
+                    high_unit: formData.get(`high_unit_${pinNum}`) || 'High',
+                    low_unit: formData.get(`low_unit_${pinNum}`) || 'Low',
+                    enabled: formData.has(`enabled_${pinNum}`),
+                    instance: parseInt(formData.get(`instance_${pinNum}`)) || (i === 0 ? 24 : i)
+                };
+            }
+            
+            // Send configuration to server
+            fetch('/api/gpio_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('GPIO configuration saved successfully! BACnet objects will be updated on next restart.');
+                    window.location.href = '/';
+                } else {
+                    alert('Error saving configuration: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving configuration. Please try again.');
+            });
+        }
+    </script>
+</body>
+</html>
